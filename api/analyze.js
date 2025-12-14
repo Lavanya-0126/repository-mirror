@@ -6,23 +6,24 @@ export default async function handler(req, res) {
   }
 
   const { repoUrl } = req.body;
+
   if (!repoUrl) {
     return res.status(400).json({ error: "Repo URL required" });
   }
 
-  const prompt = `
+  try {
+    const prompt = `
 Analyze this GitHub repository: ${repoUrl}
 
-Return STRICT JSON in this format:
+Give output ONLY in this JSON format:
 {
   "score": number (0-100),
-  "summary": "short evaluation",
+  "summary": "short summary",
   "roadmap": ["point 1", "point 2", "point 3"]
 }
 `;
 
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
@@ -35,11 +36,14 @@ Return STRICT JSON in this format:
       })
     });
 
-    const data = await response.json();
-    const text = data.choices[0].message.content;
+    const groqData = await groqRes.json();
 
-    res.status(200).json(JSON.parse(text));
+    const content = groqData.choices[0].message.content;
+    const parsed = JSON.parse(content);
+
+    return res.status(200).json(parsed);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }

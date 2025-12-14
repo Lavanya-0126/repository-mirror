@@ -1,25 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
   <title>GitHub Repository Analyzer</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       background: #0b1220;
-      color: #fff;
+      color: white;
       padding: 40px;
     }
-    input {
-      width: 70%;
-      padding: 12px;
-      font-size: 16px;
-    }
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      margin-left: 10px;
-    }
+    input { width: 70%; padding: 12px; }
+    button { padding: 12px; }
     .card {
       margin-top: 30px;
       background: #111827;
@@ -37,13 +28,13 @@
 
 <h1>GitHub Repository Analyzer</h1>
 
-<input id="repoUrl" placeholder="https://github.com/user/repo" />
+<input id="repoUrl" placeholder="https://github.com/user/repo">
 <button onclick="analyze()">Analyze</button>
 
 <div id="result" class="card" style="display:none;">
   <div class="score" id="score"></div>
-  <p><strong>Summary:</strong> <span id="summary"></span></p>
-  <p><strong>Roadmap:</strong></p>
+  <p><b>Summary:</b> <span id="summary"></span></p>
+  <p><b>Roadmap:</b></p>
   <ul id="roadmap"></ul>
 </div>
 
@@ -60,14 +51,14 @@ async function analyze() {
   const data = await res.json();
 
   document.getElementById("result").style.display = "block";
-  document.getElementById("score").textContent = `Score: ${data.score} / 100`;
-  document.getElementById("summary").textContent = data.summary;
+  document.getElementById("score").innerText = `Score: ${data.score} / 100`;
+  document.getElementById("summary").innerText = data.summary;
 
   const roadmap = document.getElementById("roadmap");
   roadmap.innerHTML = "";
-  data.roadmap.forEach(item => {
+  data.roadmap.forEach(r => {
     const li = document.createElement("li");
-    li.textContent = item;
+    li.innerText = r;
     roadmap.appendChild(li);
   });
 }
