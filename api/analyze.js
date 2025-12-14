@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).send("Method Not Allowed");
@@ -30,9 +28,10 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    res.status(200).send(data.choices[0].message.content);
+
+    return res.status(200).send(data.choices[0].message.content);
 
   } catch (error) {
-    res.status(500).send(error.toString());
+    return res.status(500).send(error.toString());
   }
 }
