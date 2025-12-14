@@ -1,42 +1,33 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Repository Analyzer</title>
-</head>
 <body>
-  <h1>GitHub Repository Analyzer</h1>
+  <h2>Repository Analyzer</h2>
 
-  <input
-    id="repo"
-    type="text"
-    placeholder="Paste GitHub repo URL"
-    style="width: 400px;"
-  />
-
+  <input id="repo" placeholder="GitHub repo URL" size="50">
   <br><br>
-
   <button onclick="analyze()">Analyze</button>
 
   <pre id="result"></pre>
 
   <script>
-    async function analyze() {
-      const repo = document.getElementById("repo").value;
-      const result = document.getElementById("result");
+async function analyze() {
+  const repo = document.getElementById("repo").value;
+  const result = document.getElementById("result");
 
-      result.innerText = "Analyzing...";
+  result.innerText = "Analyzing...";
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ repo })
-      });
+  const response = await fetch("/api/analyze", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ repo: repo })
+  });
 
-      const text = await response.text();
-      result.innerText = text;
-    }
-  </script>
+  const text = await response.text();
+  result.innerText = text;
+}
+</script>
+
 </body>
 </html>
