@@ -1,110 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
   <title>Repository Analyzer</title>
-
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #ffffff;
-      color: #000;
-    }
-
-    h1 {
-      font-size: 36px;
-      margin-bottom: 20px;
-    }
-
-    input {
-      width: 500px;
-      padding: 8px;
-      font-size: 14px;
-    }
-
-    button {
-      padding: 8px 16px;
-      font-size: 14px;
-      margin-left: 8px;
-      cursor: pointer;
-    }
-
-    .result {
-      margin-top: 30px;
-      line-height: 1.6;
+    body { font-family: Arial; padding: 40px; }
+    button { padding: 6px 12px; }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
       white-space: pre-wrap;
-    }
-
-    .section-title {
-      font-weight: bold;
       margin-top: 20px;
-    }
-
-    ul {
-      margin-top: 8px;
+      font-size: 15px;
     }
   </style>
 </head>
-
 <body>
+
   <h1>Repository Analyzer</h1>
 
-  <input
-    type="text"
-    id="repo"
-    placeholder="https://github.com/username/repository"
-  />
-  <button onclick="analyzeRepo()">Analyze</button>
+  <input id="repo" size="50" placeholder="GitHub repo URL" />
+  <button onclick="analyze()">Analyze</button>
 
-  <div class="result" id="result"></div>
+  <pre id="output"></pre>
 
   <script>
-    async function analyzeRepo() {
-      const repoUrl = document.getElementById("repo").value;
-      const resultDiv = document.getElementById("result");
-
-      resultDiv.innerHTML = "Analyzing repository...";
+    async function analyze() {
+      const repo = document.getElementById("repo").value;
+      const output = document.getElementById("output");
+      output.textContent = "Analyzing...";
 
       try {
-        const response = await fetch("/api/analyze", {
+        const res = await fetch("/api/analyze", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ repo: repoUrl })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo })
         });
 
-        const data = await response.json();
-
-        if (data.error) {
-          resultDiv.innerHTML = "Error: " + data.error;
-          return;
-        }
-
-        // Format output
-        resultDiv.innerHTML = formatResult(data.result);
+        const data = await res.json();
+        output.textContent = data.result;
 
       } catch (err) {
-        resultDiv.innerHTML = "Server error. Please try again.";
+        output.textContent = "Error occurred";
       }
-    }
-
-    function formatResult(text) {
-      // Convert roadmap bullets to list
-      let formatted = text
-        .replace(/Score:\s*(\d+\/\d+)/g, "<div class='section-title'>Score:</div>$1")
-        .replace(/Summary:/g, "<div class='section-title'>Summary:</div>")
-        .replace(/Roadmap:/g, "<div class='section-title'>Roadmap:</div><ul>")
-        .replace(/•\s*(.*)/g, "<li>$1</li>")
-        .replace(/- (.*)/g, "<li>$1</li>");
-
-      if (formatted.includes("<ul>")) {
-        formatted += "</ul>";
-      }
-
-      return formatted;
     }
   </script>
+
 </body>
 </html>
