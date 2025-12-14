@@ -7,5 +7,5 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps({
-            "status": "API is working"
+            "message": "Hello from Vercel Python API"
         }).encode())
