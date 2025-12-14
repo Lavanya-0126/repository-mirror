@@ -2,51 +2,47 @@ import Groq from "groq-sdk";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
+    return res.status(405).json({ error: "POST only" });
   }
 
   try {
     const { repoUrl } = req.body;
 
     if (!repoUrl) {
-      return res.status(400).json({ error: "repoUrl is required" });
+      return res.status(400).json({ error: "repoUrl missing" });
     }
 
-    const client = new Groq({
+    const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY,
     });
 
-    const prompt = `
-You are an AI code reviewer.
+    const completion = await groq.chat.completions.create({
+      model: "llama3-8b-8192",
+      messages: [
+        {
+          role: "user",
+          content: `
+Analyze the GitHub repository below.
 
-Analyze this GitHub repository URL:
-
-${repoUrl}
-
-Return ONLY valid JSON in this exact format:
+Give output ONLY in this JSON format:
 
 {
   "score": number,
   "summary": "short honest summary",
-  "roadmap": [
-    "step 1",
-    "step 2",
-    "step 3"
-  ]
+  "roadmap": ["step1","step2","step3"]
 }
-`;
 
-    const completion = await client.chat.completions.create({
-      model: "llama3-8b-8192",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
+Repository:
+${repoUrl}
+          `,
+        },
+      ],
     });
 
-    const raw = completion.choices?.[0]?.message?.content;
+    const text = completion.choices[0].message.content;
+    const json = JSON.parse(text);
 
-    const parsed = JSON.parse(raw); // VERY IMPORTANT
-
-    return res.status(200).json(parsed);
+    return res.status(200).json(json);
 
   } catch (err) {
     console.error(err);

@@ -4,9 +4,9 @@
   <title>GitHub Repository Analyzer</title>
   <style>
     body {
+      font-family: Arial;
       background: #0b1220;
       color: white;
-      font-family: Arial;
       padding: 40px;
     }
     input {
@@ -26,24 +26,24 @@
       border-radius: 10px;
     }
     .score {
-      font-size: 24px;
       color: #22c55e;
+      font-size: 24px;
       font-weight: bold;
     }
   </style>
 </head>
+
 <body>
 
 <h1>GitHub Repository Analyzer</h1>
 
-<input id="repo" placeholder="https://github.com/user/repo" />
+<input id="repo" placeholder="https://github.com/user/repo">
 <button onclick="analyze()">Analyze</button>
 
-<div id="output" class="card" style="display:none;">
+<div id="result" class="card" style="display:none;">
   <div class="score" id="score"></div>
-  <p><b>Summary:</b></p>
-  <p id="summary"></p>
-  <p><b>Roadmap:</b></p>
+  <p><strong>Summary:</strong> <span id="summary"></span></p>
+  <p><strong>Roadmap:</strong></p>
   <ul id="roadmap"></ul>
 </div>
 
@@ -59,16 +59,16 @@ async function analyze() {
 
   const data = await res.json();
 
-  document.getElementById("output").style.display = "block";
+  document.getElementById("result").style.display = "block";
   document.getElementById("score").innerText = `Score: ${data.score} / 100`;
   document.getElementById("summary").innerText = data.summary;
 
-  const list = document.getElementById("roadmap");
-  list.innerHTML = "";
+  const roadmap = document.getElementById("roadmap");
+  roadmap.innerHTML = "";
   data.roadmap.forEach(step => {
     const li = document.createElement("li");
     li.innerText = step;
-    list.appendChild(li);
+    roadmap.appendChild(li);
   });
 }
 </script>
