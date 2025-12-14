@@ -2,31 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>GitHub Repo Analyzer</title>
+  <title>GitHub Repository Analyzer</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
+      background: #0b1220;
+      color: #fff;
+      
       padding: 40px;
     }
     input {
       width: 70%;
-      padding: 10px;
+      padding: 12px;
       font-size: 16px;
     }
     button {
-      padding: 10px 20px;
+      padding: 12px 20px;
       font-size: 16px;
       margin-left: 10px;
-      cursor: pointer;
     }
-    pre {
-      background: #020617;
-      padding: 20px;
+    .card {
       margin-top: 30px;
-      border-radius: 8px;
-      white-space: pre-wrap;
+      background: #111827;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .score {
+      color: #22c55e;
+      font-size: 24px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -34,39 +38,39 @@
 
   <h1>GitHub Repository Analyzer</h1>
 
-  <input id="repoInput" placeholder="https://github.com/user/repo" />
+  <input id="repoUrl" placeholder="https://github.com/user/repo" />
   <button onclick="analyze()">Analyze</button>
 
-  <pre id="result">Waiting for analysis...</pre>
+  <div id="result" class="card" style="display:none;">
+    <div class="score" id="score"></div>
+    <p><strong>Summary:</strong> <span id="summary"></span></p>
+    <p><strong>Roadmap:</strong></p>
+    <ul id="roadmap"></ul>
+  </div>
 
   <script>
     async function analyze() {
-      const repo = document.getElementById("repoInput").value;
-      const result = document.getElementById("result");
+      const repoUrl = document.getElementById("repoUrl").value;
 
-      result.textContent = "Analyzing...";
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoUrl })
+      });
 
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ repo }),
-        });
+      const data = await res.json();
 
-        const data = await res.json();
+      document.getElementById("result").style.display = "block";
+      document.getElementById("score").textContent = `Score: ${data.score} / 100`;
+      document.getElementById("summary").textContent = data.summary;
 
-        if (data.error) {
-          result.textContent = "Error: " + data.error;
-          return;
-        }
-
-        result.textContent =
-          `Score: ${data.score} / 100\n\n` +
-          `Summary:\n${data.summary}\n\n` +
-          `Roadmap:\n1. ${data.roadmap[0]}\n2. ${data.roadmap[1]}\n3. ${data.roadmap[2]}`;
-      } catch (e) {
-        result.textContent = "Request failed";
-      }
+      const roadmap = document.getElementById("roadmap");
+      roadmap.innerHTML = "";
+      data.roadmap.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        roadmap.appendChild(li);
+      });
     }
   </script>
 

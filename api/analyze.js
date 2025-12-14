@@ -1,50 +1,78 @@
-import Groq from "groq-sdk";
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
-  }
-
-  try {
-    const { repo } = req.body;
-
-    if (!repo) {
-      return res.status(400).json({ error: "Repo URL required" });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GitHub Repository Analyzer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b1220;
+      color: #fff;
+      
+      padding: 40px;
     }
-
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    });
-
-    const completion = await groq.chat.completions.create({
-      model: "llama3-8b-8192",
-      temperature: 0.3,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a strict code reviewer. Respond ONLY in JSON with keys: score (number), summary (string), roadmap (array of 3 strings).",
-        },
-        {
-          role: "user",
-          content: `Analyze this GitHub repository:\n${repo}`,
-        },
-      ],
-    });
-
-    const raw = completion.choices[0].message.content;
-
-    // Parse JSON safely
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return res.status(500).json({ error: "Invalid AI response", raw });
+    input {
+      width: 70%;
+      padding: 12px;
+      font-size: 16px;
     }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      margin-left: 10px;
+    }
+    .card {
+      margin-top: 30px;
+      background: #111827;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .score {
+      color: #22c55e;
+      font-size: 24px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
 
-    return res.status(200).json(parsed);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message });
-  }
-}
+  <h1>GitHub Repository Analyzer</h1>
+
+  <input id="repoUrl" placeholder="https://github.com/user/repo" />
+  <button onclick="analyze()">Analyze</button>
+
+  <div id="result" class="card" style="display:none;">
+    <div class="score" id="score"></div>
+    <p><strong>Summary:</strong> <span id="summary"></span></p>
+    <p><strong>Roadmap:</strong></p>
+    <ul id="roadmap"></ul>
+  </div>
+
+  <script>
+    async function analyze() {
+      const repoUrl = document.getElementById("repoUrl").value;
+
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoUrl })
+      });
+
+      const data = await res.json();
+
+      document.getElementById("result").style.display = "block";
+      document.getElementById("score").textContent = `Score: ${data.score} / 100`;
+      document.getElementById("summary").textContent = data.summary;
+
+      const roadmap = document.getElementById("roadmap");
+      roadmap.innerHTML = "";
+      data.roadmap.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        roadmap.appendChild(li);
+      });
+    }
+  </script>
+
+</body>
+</html>
