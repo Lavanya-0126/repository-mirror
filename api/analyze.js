@@ -9,29 +9,34 @@ export default async function handler(req, res) {
     if (!repoUrl || !repoUrl.startsWith("https://github.com/")) {
       return res.status(400).json({
         score: 0,
-        summary: "Invalid GitHub repository URL",
-        roadmap: ["Provide a valid GitHub repo URL"]
+        summary: "Invalid GitHub URL",
+        roadmap: ["Provide a valid GitHub repository URL"]
       });
     }
 
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
     if (!GROQ_API_KEY) {
-      throw new Error("Missing GROQ_API_KEY");
+      return res.status(500).json({
+        score: 0,
+        summary: "Missing API key",
+        roadmap: ["Set GROQ_API_KEY in Vercel Environment Variables"]
+      });
     }
 
     const prompt = `
-Analyze this GitHub repository:
-${repoUrl}
+Analyze the GitHub repository: ${repoUrl}
 
-Return STRICT JSON in this format:
+Return STRICT JSON in this format only:
+
 {
   "score": number (0-100),
   "summary": "short summary",
-  "roadmap": ["point 1", "point 2", "point 3"]
+  "roadmap": ["step 1", "step 2", "step 3"]
 }
 `;
 
-    const groqRes = await fetch(
+    const groqResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
@@ -40,26 +45,28 @@ Return STRICT JSON in this format:
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama3-70b-8192",
+          model: "llama3-8b-8192",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.3
         })
       }
     );
 
-    const data = await groqRes.json();
-    const text = data.choices[0].message.content;
+    const groqData = await groqResponse.json();
 
-    // Parse JSON safely
-    const parsed = JSON.parse(text);
+    const content = groqData.choices?.[0]?.message?.content;
 
-    return res.status(200).json({
-      score: parsed.score,
-      summary: parsed.summary,
-      roadmap: parsed.roadmap
-    });
+    if (!content) {
+      throw new Error("No response from Groq");
+    }
 
-  } catch (err) {
+    const parsed = JSON.parse(content);
+
+    return res.status(200).json(parsed);
+
+  } catch (error) {
+    console.error(error);
+
     return res.status(500).json({
       score: 0,
       summary: "Analysis failed",
