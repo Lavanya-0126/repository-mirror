@@ -1,44 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Repository Analyzer</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+
+    h1 {
+      font-size: 36px;
+    }
+
+    input {
+      width: 500px;
+      padding: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 8px 14px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      white-space: pre-wrap; /* keeps formatting */
+      background: #f9f9f9;
+    }
+  </style>
 </head>
 <body>
 
   <h1>Repository Analyzer</h1>
 
- <input id="repo" type="text" placeholder="GitHub repo URL" />
-<button onclick="analyzeRepo()">Analyze</button>
+  <!-- Input for GitHub repo URL -->
+  <input
+    type="text"
+    id="repoInput"
+    placeholder="https://github.com/pallets/flask"
+  />
 
-<div id="result" style="white-space: pre-wrap; margin-top: 20px;"></div>
+  <!-- Analyze button -->
+  <button onclick="analyzeRepo()">Analyze</button>
+
+  <!-- Status text -->
+  <div id="status"></div>
+
+  <!-- Result output -->
+  <div id="result"></div>
+
   <script>
-async function analyzeRepo() {
-  const repo = document.getElementById("repo").value;
-  const resultDiv = document.getElementById("result");
+    async function analyzeRepo() {
+      const repoUrl = document.getElementById("repoInput").value;
+      const statusDiv = document.getElementById("status");
+      const resultDiv = document.getElementById("result");
 
-  resultDiv.innerHTML = "Analyzing...";
+      // Clear old output
+      statusDiv.textContent = "";
+      resultDiv.textContent = "";
 
-  try {
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repo })
-    });
+      if (!repoUrl) {
+        statusDiv.textContent = "❌ Please enter a GitHub repository URL";
+        return;
+      }
 
-    const data = await response.json();
+      statusDiv.textContent = "⏳ Analyzing repository...";
 
-    if (data.result) {
-      // Convert markdown-like text to readable format
-      resultDiv.innerHTML = `<pre>${data.result}</pre>`;
-    } else {
-      resultDiv.innerHTML = "Error: " + (data.error || "Unknown error");
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ repo: repoUrl })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          // API returned an error
+          statusDiv.textContent = "❌ Server error";
+          resultDiv.textContent = data.error || "Unknown error";
+          return;
+        }
+
+        // Success
+        statusDiv.textContent = "✅ Analysis complete";
+
+        // Show ONLY the result text (not raw JSON)
+        resultDiv.textContent = data.result;
+
+      } catch (error) {
+        statusDiv.textContent = "❌ Failed to connect to server";
+        resultDiv.textContent = error.message;
+      }
     }
-  } catch (err) {
-    resultDiv.innerHTML = "Server error";
-  }
-}
-</script>
-
+  </script>
 
 </body>
 </html>
