@@ -1,3 +1,8 @@
 {
-  "type": "module"
+  "name": "repository-mirror",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "groq-sdk": "^0.6.0"
+  }
 }
