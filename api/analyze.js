@@ -1,16 +1,16 @@
 export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
+  try {
     const { repoUrl } = req.body;
 
     if (!repoUrl || !repoUrl.startsWith("https://github.com/")) {
       return res.status(400).json({
         score: 0,
-        summary: "Invalid GitHub URL",
-        roadmap: ["Enter a valid GitHub repository URL"]
+        summary: "Invalid GitHub repository URL",
+        roadmap: ["Provide a valid GitHub repo URL"]
       });
     }
 
@@ -20,9 +20,10 @@ export default async function handler(req, res) {
     }
 
     const prompt = `
-Analyze this GitHub repository: ${repoUrl}
+Analyze this GitHub repository:
+${repoUrl}
 
-Return STRICT JSON ONLY in this format:
+Return STRICT JSON in this format:
 {
   "score": number (0-100),
   "summary": "short summary",
@@ -30,7 +31,7 @@ Return STRICT JSON ONLY in this format:
 }
 `;
 
-    const response = await fetch(
+    const groqRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
@@ -39,26 +40,27 @@ Return STRICT JSON ONLY in this format:
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+          model: "llama3-70b-8192",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.3
         })
       }
     );
 
-    const data = await response.json();
+    const data = await groqRes.json();
+    const text = data.choices[0].message.content;
 
-    const content = data.choices?.[0]?.message?.content;
+    // Parse JSON safely
+    const parsed = JSON.parse(text);
 
-    if (!content) throw new Error("Empty Groq response");
-
-    const parsed = JSON.parse(content);
-
-    return res.status(200).json(parsed);
-
-  } catch (error) {
-    console.error(error);
     return res.status(200).json({
+      score: parsed.score,
+      summary: parsed.summary,
+      roadmap: parsed.roadmap
+    });
+
+  } catch (err) {
+    return res.status(500).json({
       score: 0,
       summary: "Analysis failed",
       roadmap: ["Check API key", "Verify repo URL"]
