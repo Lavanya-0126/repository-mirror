@@ -4,8 +4,14 @@ from groq import Groq
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def handler(request, context):
+def handler(request):
     try:
+        if request.method != "POST":
+            return {
+                "statusCode": 405,
+                "body": "Method Not Allowed"
+            }
+
         body = json.loads(request.body or "{}")
         repo = body.get("repo")
 
@@ -20,19 +26,21 @@ def handler(request, context):
             messages=[
                 {
                     "role": "user",
-                    "content": f"Analyze this GitHub repository:\n{repo}"
+                    "content": f"Analyze this GitHub repository and summarize its purpose, tech stack, and structure: {repo}"
                 }
             ]
         )
 
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "text/plain"},
+            "headers": {
+                "Content-Type": "text/plain"
+            },
             "body": response.choices[0].message.content
         }
 
     except Exception as e:
         return {
             "statusCode": 500,
-            "body": str(e)
+            "body": f"Server error: {str(e)}"
         }
