@@ -2,16 +2,3 @@ body {
   font-family: Arial;
   padding: 40px;
 }
-
-input {
-  width: 420px;
-  padding: 10px;
-}
-
-button {
-  padding: 10px;
-}
-
-#output {
-  margin-top: 30px;
-}
