@@ -1,17 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Repository Mirror</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Repository Analyzer</title>
 </head>
 <body>
-  <h1>Repository Analyzer</h1>
+  <h1>GitHub Repository Analyzer</h1>
 
-  <input id="repo" placeholder="GitHub Repo URL">
+  <input
+    id="repo"
+    type="text"
+    placeholder="Paste GitHub repo URL"
+    style="width: 400px;"
+  />
+
+  <br><br>
+
   <button onclick="analyze()">Analyze</button>
 
   <pre id="result"></pre>
 
-  <script src="script.js"></script>
+  <script>
+    async function analyze() {
+      const repo = document.getElementById("repo").value;
+      const result = document.getElementById("result");
+
+      result.innerText = "Analyzing...";
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ repo })
+      });
+
+      const text = await response.text();
+      result.innerText = text;
+    }
+  </script>
 </body>
 </html>
