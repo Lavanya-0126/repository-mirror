@@ -35,43 +35,43 @@
 </head>
 <body>
 
-  <h1>GitHub Repository Analyzer</h1>
+<h1>GitHub Repository Analyzer</h1>
 
-  <input id="repoUrl" placeholder="https://github.com/user/repo" />
-  <button onclick="analyze()">Analyze</button>
+<input id="repoUrl" placeholder="https://github.com/user/repo" />
+<button onclick="analyze()">Analyze</button>
 
-  <div id="result" class="card" style="display:none;">
-    <div class="score" id="score"></div>
-    <p><strong>Summary:</strong> <span id="summary"></span></p>
-    <p><strong>Roadmap:</strong></p>
-    <ul id="roadmap"></ul>
-  </div>
+<div id="result" class="card" style="display:none;">
+  <div class="score" id="score"></div>
+  <p><strong>Summary:</strong> <span id="summary"></span></p>
+  <p><strong>Roadmap:</strong></p>
+  <ul id="roadmap"></ul>
+</div>
 
-  <script>
-    async function analyze() {
-      const repoUrl = document.getElementById("repoUrl").value;
+<script>
+async function analyze() {
+  const repoUrl = document.getElementById("repoUrl").value;
 
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl })
-      });
+  const res = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repoUrl })
+  });
 
-      const data = await res.json();
+  const data = await res.json();
 
-      document.getElementById("result").style.display = "block";
-      document.getElementById("score").textContent = `Score: ${data.score} / 100`;
-      document.getElementById("summary").textContent = data.summary;
+  document.getElementById("result").style.display = "block";
+  document.getElementById("score").textContent = `Score: ${data.score} / 100`;
+  document.getElementById("summary").textContent = data.summary;
 
-      const roadmap = document.getElementById("roadmap");
-      roadmap.innerHTML = "";
-      data.roadmap.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = item;
-        roadmap.appendChild(li);
-      });
-    }
-  </script>
+  const roadmap = document.getElementById("roadmap");
+  roadmap.innerHTML = "";
+  data.roadmap.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    roadmap.appendChild(li);
+  });
+}
+</script>
 
 </body>
 </html>
