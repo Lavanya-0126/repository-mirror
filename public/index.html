@@ -1,118 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Repository Analyzer</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 40px;
-    }
-
-    input {
-      width: 420px;
-      padding: 8px;
-      font-size: 16px;
-    }
-
-    button {
-      padding: 8px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    #result {
-      margin-top: 30px;
-      padding: 20px;
-      background: #f5f5f5;
-      border-radius: 6px;
-      white-space: pre-wrap;
-    }
-
-    .score {
-      font-size: 22px;
-      font-weight: bold;
-      color: #2b7a0b;
-    }
-
-    ul {
-      margin-top: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Repository Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        input {
+            width: 400px;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            margin-left: 8px;
+        }
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        .score {
+            color: green;
+            font-size: 22px;
+            font-weight: bold;
+        }
+    </style>
 </head>
-
 <body>
 
-  <h1>Repository Analyzer</h1>
+<h1>Repository Analyzer</h1>
 
-  <input
-    type="text"
-    id="repoInput"
-    placeholder="https://github.com/username/repo"
-  />
+<input id="repoInput" placeholder="Enter GitHub repo URL" />
+<button onclick="analyzeRepo()">Analyze</button>
 
-  <button onclick="analyzeRepo()">Analyze</button>
+<div class="result-box">
+    <p class="score">Score: <span id="score">-</span> / 100</p>
+    <p><b>Summary:</b> <span id="summary">-</span></p>
 
-  <div id="result"></div>
+    <p><b>Roadmap:</b></p>
+    <ul id="roadmap"></ul>
+</div>
 
-  <script>
-    async function analyzeRepo() {
-      const repoUrl = document.getElementById("repoInput").value;
-      const resultDiv = document.getElementById("result");
+<script>
+async function analyzeRepo() {
+    const repo = document.getElementById("repoInput").value;
 
-      resultDiv.innerHTML = "Analyzing...";
+    const response = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo })
+    });
 
-      try {
-        const response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ repo: repoUrl }),
-        });
+    const data = await response.json();
 
-        const data = await response.json();
+    // ✅ Correct assignments
+    document.getElementById("score").textContent = data.score;
+    document.getElementById("summary").textContent = data.summary;
 
-        if (data.error) {
-          resultDiv.innerHTML = `<b>Error:</b> ${data.error}`;
-          return;
-        }
+    const roadmapList = document.getElementById("roadmap");
+    roadmapList.innerHTML = "";
 
-        /*
-          EXPECTED API RESPONSE FORMAT:
-          {
-            "score": 42,
-            "summary": "Basic project structure but poor documentation",
-            "roadmap": [
-              "Add README",
-              "Improve commits",
-              "Restructure folders"
-            ]
-          }
-        */
-
-        let roadmapHTML = "";
-        if (Array.isArray(data.roadmap)) {
-          roadmapHTML = "<ul>" +
-            data.roadmap.map(item => `<li>${item}</li>`).join("") +
-            "</ul>";
-        }
-
-        resultDiv.innerHTML = `
-          <div class="score">Score: ${data.score} / 100</div>
-
-          <p><b>Summary:</b> ${data.summary}</p>
-
-          <p><b>Roadmap:</b></p>
-          ${roadmapHTML}
-        `;
-
-      } catch (err) {
-        resultDiv.innerHTML = "Server error";
-      }
-    }
-  </script>
+    data.roadmap.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        roadmapList.appendChild(li);
+    });
+}
+</script>
 
 </body>
 </html>
