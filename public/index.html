@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
   <title>GitHub Repository Analyzer</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
       background: #0b1220;
-      color: #fff;
+      color: white;
+      font-family: Arial;
       padding: 40px;
     }
     input {
@@ -27,8 +26,8 @@
       border-radius: 10px;
     }
     .score {
-      color: #22c55e;
       font-size: 24px;
+      color: #22c55e;
       font-weight: bold;
     }
   </style>
@@ -37,19 +36,20 @@
 
 <h1>GitHub Repository Analyzer</h1>
 
-<input id="repoUrl" placeholder="https://github.com/user/repo" />
+<input id="repo" placeholder="https://github.com/user/repo" />
 <button onclick="analyze()">Analyze</button>
 
-<div id="result" class="card" style="display:none;">
+<div id="output" class="card" style="display:none;">
   <div class="score" id="score"></div>
-  <p><strong>Summary:</strong> <span id="summary"></span></p>
-  <p><strong>Roadmap:</strong></p>
+  <p><b>Summary:</b></p>
+  <p id="summary"></p>
+  <p><b>Roadmap:</b></p>
   <ul id="roadmap"></ul>
 </div>
 
 <script>
 async function analyze() {
-  const repoUrl = document.getElementById("repoUrl").value;
+  const repoUrl = document.getElementById("repo").value;
 
   const res = await fetch("/api/analyze", {
     method: "POST",
@@ -59,22 +59,16 @@ async function analyze() {
 
   const data = await res.json();
 
-  if (data.error) {
-    alert(data.error);
-    return;
-  }
+  document.getElementById("output").style.display = "block";
+  document.getElementById("score").innerText = `Score: ${data.score} / 100`;
+  document.getElementById("summary").innerText = data.summary;
 
-  document.getElementById("result").style.display = "block";
-  document.getElementById("score").textContent = `Score: ${data.score} / 100`;
-  document.getElementById("summary").textContent = data.summary;
-
-  const roadmap = document.getElementById("roadmap");
-  roadmap.innerHTML = "";
-
-  data.roadmap.forEach(item => {
+  const list = document.getElementById("roadmap");
+  list.innerHTML = "";
+  data.roadmap.forEach(step => {
     const li = document.createElement("li");
-    li.textContent = item;
-    roadmap.appendChild(li);
+    li.innerText = step;
+    list.appendChild(li);
   });
 }
 </script>

@@ -1,60 +1,55 @@
+import Groq from "groq-sdk";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { repoUrl } = req.body;
-
-  if (!repoUrl) {
-    return res.status(400).json({ error: "Repository URL is required" });
+    return res.status(405).json({ error: "Only POST allowed" });
   }
 
   try {
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a GitHub repository analyzer. Always respond in valid JSON only."
-          },
-          {
-            role: "user",
-            content: `
-Analyze this GitHub repository: ${repoUrl}
+    const { repoUrl } = req.body;
 
-Return STRICT JSON in this format:
-{
-  "score": number (0-100),
-  "summary": "short summary",
-  "roadmap": ["point1", "point2", "point3"]
-}
-`
-          }
-        ],
-        temperature: 0.3
-      })
+    if (!repoUrl) {
+      return res.status(400).json({ error: "repoUrl is required" });
+    }
+
+    const client = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
     });
 
-    const data = await groqRes.json();
+    const prompt = `
+You are an AI code reviewer.
 
-    const content = data.choices[0].message.content;
+Analyze this GitHub repository URL:
 
-    // Parse LLM JSON safely
-    const parsed = JSON.parse(content);
+${repoUrl}
+
+Return ONLY valid JSON in this exact format:
+
+{
+  "score": number,
+  "summary": "short honest summary",
+  "roadmap": [
+    "step 1",
+    "step 2",
+    "step 3"
+  ]
+}
+`;
+
+    const completion = await client.chat.completions.create({
+      model: "llama3-8b-8192",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    });
+
+    const raw = completion.choices?.[0]?.message?.content;
+
+    const parsed = JSON.parse(raw); // VERY IMPORTANT
 
     return res.status(200).json(parsed);
 
-  } catch (error) {
-    return res.status(500).json({
-      error: "Analysis failed",
-      details: error.message
-    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
   }
 }
