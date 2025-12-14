@@ -8,74 +8,63 @@
     body {
       font-family: Arial, sans-serif;
       margin: 40px;
+      background: #ffffff;
+      color: #000;
     }
 
     h1 {
       font-size: 36px;
+      margin-bottom: 20px;
     }
 
     input {
       width: 500px;
       padding: 8px;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     button {
-      padding: 8px 14px;
-      font-size: 16px;
+      padding: 8px 16px;
+      font-size: 14px;
+      margin-left: 8px;
       cursor: pointer;
     }
 
-    #status {
-      margin-top: 15px;
-      font-weight: bold;
+    .result {
+      margin-top: 30px;
+      line-height: 1.6;
+      white-space: pre-wrap;
     }
 
-    #result {
+    .section-title {
+      font-weight: bold;
       margin-top: 20px;
-      padding: 15px;
-      border: 1px solid #ccc;
-      white-space: pre-wrap; /* keeps formatting */
-      background: #f9f9f9;
+    }
+
+    ul {
+      margin-top: 8px;
     }
   </style>
 </head>
-<body>
 
+<body>
   <h1>Repository Analyzer</h1>
 
-  <!-- Input for GitHub repo URL -->
   <input
     type="text"
-    id="repoInput"
-    placeholder="https://github.com/pallets/flask"
+    id="repo"
+    placeholder="https://github.com/username/repository"
   />
-
-  <!-- Analyze button -->
   <button onclick="analyzeRepo()">Analyze</button>
 
-  <!-- Status text -->
-  <div id="status"></div>
-
-  <!-- Result output -->
-  <div id="result"></div>
+  <div class="result" id="result"></div>
 
   <script>
     async function analyzeRepo() {
-      const repoUrl = document.getElementById("repoInput").value;
-      const statusDiv = document.getElementById("status");
+      const repoUrl = document.getElementById("repo").value;
       const resultDiv = document.getElementById("result");
 
-      // Clear old output
-      statusDiv.textContent = "";
-      resultDiv.textContent = "";
-
-      if (!repoUrl) {
-        statusDiv.textContent = "❌ Please enter a GitHub repository URL";
-        return;
-      }
-
-      statusDiv.textContent = "⏳ Analyzing repository...";
+      resultDiv.innerHTML = "Analyzing repository...";
 
       try {
         const response = await fetch("/api/analyze", {
@@ -88,25 +77,34 @@
 
         const data = await response.json();
 
-        if (!response.ok) {
-          // API returned an error
-          statusDiv.textContent = "❌ Server error";
-          resultDiv.textContent = data.error || "Unknown error";
+        if (data.error) {
+          resultDiv.innerHTML = "Error: " + data.error;
           return;
         }
 
-        // Success
-        statusDiv.textContent = "✅ Analysis complete";
+        // Format output
+        resultDiv.innerHTML = formatResult(data.result);
 
-        // Show ONLY the result text (not raw JSON)
-        resultDiv.textContent = data.result;
-
-      } catch (error) {
-        statusDiv.textContent = "❌ Failed to connect to server";
-        resultDiv.textContent = error.message;
+      } catch (err) {
+        resultDiv.innerHTML = "Server error. Please try again.";
       }
     }
-  </script>
 
+    function formatResult(text) {
+      // Convert roadmap bullets to list
+      let formatted = text
+        .replace(/Score:\s*(\d+\/\d+)/g, "<div class='section-title'>Score:</div>$1")
+        .replace(/Summary:/g, "<div class='section-title'>Summary:</div>")
+        .replace(/Roadmap:/g, "<div class='section-title'>Roadmap:</div><ul>")
+        .replace(/•\s*(.*)/g, "<li>$1</li>")
+        .replace(/- (.*)/g, "<li>$1</li>");
+
+      if (formatted.includes("<ul>")) {
+        formatted += "</ul>";
+      }
+
+      return formatted;
+    }
+  </script>
 </body>
 </html>
