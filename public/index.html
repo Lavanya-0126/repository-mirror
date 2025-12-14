@@ -3,30 +3,11 @@
 <head>
   <title>GitHub Repository Analyzer</title>
   <style>
-    body {
-      background: #0b1220;
-      color: white;
-      font-family: Arial;
-      padding: 40px;
-    }
-    input {
-      width: 70%;
-      padding: 12px;
-    }
-    button {
-      padding: 12px 20px;
-    }
-    .card {
-      background: #111827;
-      padding: 20px;
-      margin-top: 30px;
-      border-radius: 10px;
-    }
-    .score {
-      color: #22c55e;
-      font-size: 24px;
-      font-weight: bold;
-    }
+    body { background:#0b1220; color:white; font-family:Arial; padding:40px; }
+    input { width:70%; padding:12px; font-size:16px; }
+    button { padding:12px 20px; font-size:16px; }
+    .card { background:#111827; margin-top:30px; padding:20px; border-radius:10px; }
+    .score { color:#22c55e; font-size:24px; font-weight:bold; }
   </style>
 </head>
 <body>
@@ -56,14 +37,15 @@ async function analyze() {
   const data = await res.json();
 
   document.getElementById("result").style.display = "block";
-  document.getElementById("score").innerText = `Score: ${data.score} / 100`;
-  document.getElementById("summary").innerText = data.summary;
+  document.getElementById("score").textContent = `Score: ${data.score} / 100`;
+  document.getElementById("summary").textContent = data.summary;
 
   const roadmap = document.getElementById("roadmap");
   roadmap.innerHTML = "";
-  data.roadmap.forEach(item => {
+
+  data.roadmap.forEach(step => {
     const li = document.createElement("li");
-    li.innerText = item;
+    li.textContent = step;
     roadmap.appendChild(li);
   });
 }
