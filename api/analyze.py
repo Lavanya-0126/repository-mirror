@@ -1,52 +1,38 @@
 import json
-import requests
+import os
+from groq import Groq
 
-def handler(request):
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+def handler(request, context):
     try:
-        body = request.json()
-        repo_url = body.get("repo")
+        body = json.loads(request.body or "{}")
+        repo = body.get("repo")
 
-        if not repo_url:
+        if not repo:
             return {
                 "statusCode": 400,
-                "body": json.dumps({"error": "No repo URL provided"})
+                "body": "Missing repo URL"
             }
 
-        parts = repo_url.rstrip("/").split("/")
-        owner, repo = parts[-2], parts[-1]
-
-        api_url = f"https://api.github.com/repos/{owner}/{repo}"
-        contents_url = f"{api_url}/contents"
-
-        repo_res = requests.get(api_url)
-        contents_res = requests.get(contents_url)
-
-        if repo_res.status_code != 200:
-            return {
-                "statusCode": 404,
-                "body": json.dumps({"error": "Repository not found"})
-            }
-
-        contents = contents_res.json()
-
-        files = len(contents) if isinstance(contents, list) else 0
-        has_readme = any("readme" in f["name"].lower() for f in contents if "name" in f)
-        has_tests = any("test" in f["name"].lower() for f in contents if "name" in f)
-
-        result = {
-            "files": files,
-            "has_readme": has_readme,
-            "has_tests": has_tests
-        }
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Analyze this GitHub repository:\n{repo}"
+                }
+            ]
+        )
 
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(result)
+            "headers": {"Content-Type": "text/plain"},
+            "body": response.choices[0].message.content
         }
 
     except Exception as e:
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
+            "body": str(e)
         }
