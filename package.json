@@ -1,5 +1,6 @@
 {
+  "type": "module",
   "dependencies": {
-    "groq-sdk": "^0.37.0"
+    "groq-sdk": "^0.7.0"
   }
 }

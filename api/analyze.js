@@ -5,11 +5,11 @@ const client = new Groq({
 });
 
 export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(405).send("Method Not Allowed");
-    }
+  if (req.method !== "POST") {
+    return res.status(405).send("Method Not Allowed");
+  }
 
+  try {
     const { repo } = req.body;
 
     if (!repo) {
@@ -27,9 +27,8 @@ export default async function handler(req, res) {
     });
 
     res.status(200).send(completion.choices[0].message.content);
-
   } catch (err) {
     console.error(err);
-    res.status(500).send(err.message);
+    res.status(500).send("Server error");
   }
 }
