@@ -14,7 +14,9 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log("=== STEP 1: Extracting repo info ===");
+    console.log("=== Analyzing repository:", repoUrl, "===");
+
+    // Extract repo info
     const parts = repoUrl.replace('https://github.com/', '').split('/');
     const owner = parts[0];
     const repo = parts[1]?.replace('.git', '');
@@ -23,19 +25,14 @@ export default async function handler(req, res) {
       throw new Error('Invalid repository URL format');
     }
 
-    console.log(`Owner: ${owner}, Repo: ${repo}`);
-
-    console.log("=== STEP 2: Fetching GitHub data ===");
+    // Fetch GitHub data
     const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
     
     if (!repoResponse.ok) {
-      const errorData = await repoResponse.json();
-      console.error("GitHub API Error:", errorData);
-      throw new Error(`Repository not found: ${errorData.message}`);
+      throw new Error('Repository not found or is private');
     }
 
     const repoData = await repoResponse.json();
-    console.log("Repo data fetched successfully");
 
     // Fetch README
     let readmeContent = '';
@@ -46,7 +43,6 @@ export default async function handler(req, res) {
         const readmeData = await readmeResponse.json();
         readmeContent = Buffer.from(readmeData.content, 'base64').toString('utf-8');
         hasReadme = true;
-        console.log("README found");
       }
     } catch (e) {
       console.log('No README found');
@@ -55,26 +51,22 @@ export default async function handler(req, res) {
     // Fetch commits
     const commitsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=10`);
     const commits = commitsResponse.ok ? await commitsResponse.json() : [];
-    console.log(`Fetched ${commits.length} commits`);
 
     // Fetch languages
     const languagesResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/languages`);
     const languages = languagesResponse.ok ? await languagesResponse.json() : {};
-    console.log("Languages:", Object.keys(languages).join(', '));
 
     // Fetch contents
     const contentsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
     const contents = contentsResponse.ok ? await contentsResponse.json() : [];
 
-    console.log("=== STEP 3: Checking Groq API key ===");
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY environment variable is not set in Vercel");
+      throw new Error("GROQ_API_KEY not set in environment variables");
     }
-    console.log("API key found:", GROQ_API_KEY.substring(0, 10) + "...");
 
-    console.log("=== STEP 4: Preparing analysis prompt ===");
-    const prompt = `Analyze this GitHub repository:
+    // Create analysis prompt
+    const prompt = `Analyze this GitHub repository and provide a quality assessment:
 
 Repository: ${repoData.name}
 Description: ${repoData.description || 'No description'}
@@ -88,26 +80,27 @@ Last Updated: ${repoData.updated_at}
 Has README: ${hasReadme ? 'Yes' : 'No'}
 README Length: ${readmeContent.length} characters
 
-Root Files: ${contents.map(c => c.name).join(', ')}
+Root Files/Folders: ${contents.map(c => c.name).slice(0, 15).join(', ')}
 
-Recent Commits (${commits.length}):
+Recent Commit Messages:
 ${commits.slice(0, 5).map(c => `- ${c.commit.message}`).join('\n')}
 
-Evaluate this repository based on:
-1. Documentation quality (README, comments)
-2. Code organization and structure
-3. Commit history quality
-4. Project maintenance and activity
-5. Best practices
+Evaluate based on:
+- Documentation quality (README, code comments)
+- Project structure and organization  
+- Commit history and maintenance
+- Community engagement (stars, forks, issues)
+- Best practices and standards
 
-Respond with ONLY this JSON format (no markdown, no code blocks):
+Respond with ONLY valid JSON (no markdown, no code blocks):
 {
   "score": <number 0-100>,
-  "summary": "<1-2 sentence evaluation>",
-  "roadmap": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
+  "summary": "<1-2 sentence technical evaluation>",
+  "roadmap": ["<specific improvement 1>", "<specific improvement 2>", "<specific improvement 3>"]
 }`;
 
-    console.log("=== STEP 5: Calling Groq API ===");
+    console.log("Calling Groq API...");
+
     const groqResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -117,11 +110,11 @@ Respond with ONLY this JSON format (no markdown, no code blocks):
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+          model: "llama-3.3-70b-versatile", // ✅ UPDATED MODEL
           messages: [
             {
               role: "system",
-              content: "You are a GitHub repository analyzer. Return ONLY valid JSON without markdown code blocks or explanations."
+              content: "You are a GitHub repository analyzer. Always return ONLY valid JSON without markdown code blocks."
             },
             {
               role: "user",
@@ -129,12 +122,10 @@ Respond with ONLY this JSON format (no markdown, no code blocks):
             }
           ],
           temperature: 0.3,
-          max_tokens: 800
+          max_tokens: 1000
         })
       }
     );
-
-    console.log("Groq response status:", groqResponse.status);
 
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();
@@ -143,45 +134,36 @@ Respond with ONLY this JSON format (no markdown, no code blocks):
     }
 
     const data = await groqResponse.json();
-    console.log("Groq raw response:", JSON.stringify(data, null, 2));
-
     let text = data.choices?.[0]?.message?.content;
     
     if (!text) {
-      console.error("No content in Groq response:", data);
-      throw new Error("No response from Groq - empty content");
+      throw new Error("No response from Groq");
     }
 
     console.log("Raw AI response:", text);
 
-    // Clean up response
+    // Clean up response - remove markdown code blocks
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    console.log("Cleaned response:", text);
-
-    console.log("=== STEP 6: Parsing JSON ===");
+    
     const parsed = JSON.parse(text);
     
     // Validate structure
     if (typeof parsed.score !== 'number' || !parsed.summary || !Array.isArray(parsed.roadmap)) {
-      throw new Error('Invalid response format from AI');
+      throw new Error('Invalid response format');
     }
 
-    console.log("=== SUCCESS ===");
+    console.log("Analysis successful!");
     return res.status(200).json(parsed);
 
   } catch (error) {
-    console.error("=== ERROR ===");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    
+    console.error("Error:", error.message);
     return res.status(200).json({
       score: 0,
       summary: `Analysis failed: ${error.message}`,
       roadmap: [
-        "Check Vercel logs for detailed error",
-        "Verify GROQ_API_KEY is set correctly",
-        "Ensure repository is public and accessible"
+        "Verify GROQ_API_KEY is set in Vercel",
+        "Ensure repository is public",
+        "Check Vercel function logs for details"
       ]
     });
   }
