@@ -7,36 +7,38 @@
 
   <h1>Repository Analyzer</h1>
 
-  <input
-    type="text"
-    id="repo"
-    value="https://github.com/pallets/flask"
-    style="width:400px"
-  />
+ <input id="repo" type="text" placeholder="GitHub repo URL" />
+<button onclick="analyzeRepo()">Analyze</button>
 
-  <button onclick="analyze()">Analyze</button>
-
-  <pre id="result" style="margin-top:20px; white-space:pre-wrap;"></pre>
-
+<div id="result" style="white-space: pre-wrap; margin-top: 20px;"></div>
   <script>
-    async function analyze() {
-      const repo = document.getElementById("repo").value;
-      const result = document.getElementById("result");
+async function analyzeRepo() {
+  const repo = document.getElementById("repo").value;
+  const resultDiv = document.getElementById("result");
 
-      result.innerText = "Analyzing...";
+  resultDiv.innerHTML = "Analyzing...";
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ repo })
-      });
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo })
+    });
 
-      const text = await response.text();
-      result.innerText = text;
+    const data = await response.json();
+
+    if (data.result) {
+      // Convert markdown-like text to readable format
+      resultDiv.innerHTML = `<pre>${data.result}</pre>`;
+    } else {
+      resultDiv.innerHTML = "Error: " + (data.error || "Unknown error");
     }
-  </script>
+  } catch (err) {
+    resultDiv.innerHTML = "Server error";
+  }
+}
+</script>
+
 
 </body>
 </html>
