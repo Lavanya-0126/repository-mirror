@@ -1,78 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>GitHub Repository Analyzer</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0b1220;
-      color: #fff;
-      
-      padding: 40px;
-    }
-    input {
-      width: 70%;
-      padding: 12px;
-      font-size: 16px;
-    }
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      margin-left: 10px;
-    }
-    .card {
-      margin-top: 30px;
-      background: #111827;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    .score {
-      color: #22c55e;
-      font-size: 24px;
-      font-weight: bold;
-    }
-  </style>
-</head>
-<body>
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-  <h1>GitHub Repository Analyzer</h1>
+  const { repoUrl } = req.body;
 
-  <input id="repoUrl" placeholder="https://github.com/user/repo" />
-  <button onclick="analyze()">Analyze</button>
+  if (!repoUrl) {
+    return res.status(400).json({ error: "Repository URL is required" });
+  }
 
-  <div id="result" class="card" style="display:none;">
-    <div class="score" id="score"></div>
-    <p><strong>Summary:</strong> <span id="summary"></span></p>
-    <p><strong>Roadmap:</strong></p>
-    <ul id="roadmap"></ul>
-  </div>
+  try {
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a GitHub repository analyzer. Always respond in valid JSON only."
+          },
+          {
+            role: "user",
+            content: `
+Analyze this GitHub repository: ${repoUrl}
 
-  <script>
-    async function analyze() {
-      const repoUrl = document.getElementById("repoUrl").value;
+Return STRICT JSON in this format:
+{
+  "score": number (0-100),
+  "summary": "short summary",
+  "roadmap": ["point1", "point2", "point3"]
+}
+`
+          }
+        ],
+        temperature: 0.3
+      })
+    });
 
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl })
-      });
+    const data = await groqRes.json();
 
-      const data = await res.json();
+    const content = data.choices[0].message.content;
 
-      document.getElementById("result").style.display = "block";
-      document.getElementById("score").textContent = `Score: ${data.score} / 100`;
-      document.getElementById("summary").textContent = data.summary;
+    // Parse LLM JSON safely
+    const parsed = JSON.parse(content);
 
-      const roadmap = document.getElementById("roadmap");
-      roadmap.innerHTML = "";
-      data.roadmap.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = item;
-        roadmap.appendChild(li);
-      });
-    }
-  </script>
+    return res.status(200).json(parsed);
 
-</body>
-</html>
+  } catch (error) {
+    return res.status(500).json({
+      error: "Analysis failed",
+      details: error.message
+    });
+  }
+}
