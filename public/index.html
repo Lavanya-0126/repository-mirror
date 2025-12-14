@@ -1,75 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Repository Analyzer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        input {
-            width: 400px;
-            padding: 8px;
-        }
-        button {
-            padding: 8px 16px;
-            margin-left: 8px;
-        }
-        .result-box {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f5f5f5;
-            border-radius: 6px;
-        }
-        .score {
-            color: green;
-            font-size: 22px;
-            font-weight: bold;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Repository Analyzer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    input {
+      width: 400px;
+      padding: 8px;
+    }
+    button {
+      padding: 8px 16px;
+      margin-left: 10px;
+    }
+    .result-box {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    .score {
+      color: green;
+      font-size: 22px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
-<h1>Repository Analyzer</h1>
+  <h1>Repository Analyzer</h1>
 
-<input id="repoInput" placeholder="Enter GitHub repo URL" />
-<button onclick="analyzeRepo()">Analyze</button>
+  <input type="text" id="repoUrl" placeholder="Enter GitHub repository URL">
+  <button onclick="analyzeRepo()">Analyze</button>
 
-<div class="result-box">
-    <p class="score">Score: <span id="score">-</span> / 100</p>
-    <p><b>Summary:</b> <span id="summary">-</span></p>
-
-    <p><b>Roadmap:</b></p>
+  <div class="result-box">
+    <div class="score" id="score">Score: - / 100</div>
+    <p><strong>Summary:</strong> <span id="summary">-</span></p>
+    <p><strong>Roadmap:</strong></p>
     <ul id="roadmap"></ul>
-</div>
+  </div>
 
-<script>
-async function analyzeRepo() {
-    const repo = document.getElementById("repoInput").value;
+  <script>
+    async function analyzeRepo() {
+      const url = document.getElementById("repoUrl").value;
 
-    const response = await fetch("/analyze", {
+      const response = await fetch("/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo })
-    });
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ repo_url: url })
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    // ✅ Correct assignments
-    document.getElementById("score").textContent = data.score;
-    document.getElementById("summary").textContent = data.summary;
+      // ✅ Correct mapping
+      document.getElementById("score").textContent =
+        `Score: ${data.score} / 100`;
 
-    const roadmapList = document.getElementById("roadmap");
-    roadmapList.innerHTML = "";
+      document.getElementById("summary").textContent =
+        data.summary;
 
-    data.roadmap.forEach(item => {
+      const roadmapList = document.getElementById("roadmap");
+      roadmapList.innerHTML = "";
+
+      data.roadmap.forEach(item => {
         const li = document.createElement("li");
         li.textContent = item;
         roadmapList.appendChild(li);
-    });
-}
-</script>
+      });
+    }
+  </script>
 
 </body>
 </html>
