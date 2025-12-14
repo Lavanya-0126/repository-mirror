@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GitHub Repo Analyzer</title>
+  <title>GitHub Repository Analyzer</title>
   <style>
-    body { font-family: Arial; background:#0b1220; color:white; padding:40px }
-    input { width:70%; padding:12px }
-    button { padding:12px 20px }
-    .card { background:#111827; padding:20px; border-radius:10px; margin-top:30px }
-    .score { color:#22c55e; font-size:24px; font-weight:bold }
+    body { background:#0b1220; color:#fff; font-family:Arial; padding:40px; }
+    input { width:70%; padding:12px; }
+    button { padding:12px 20px; }
+    .card { margin-top:30px; background:#111827; padding:20px; border-radius:10px; }
+    .score { color:#22c55e; font-size:24px; font-weight:bold; }
   </style>
 </head>
 <body>
 
 <h1>GitHub Repository Analyzer</h1>
 
-<input id="repo" placeholder="https://github.com/user/repo">
+<input id="repoUrl" placeholder="https://github.com/user/repo">
 <button onclick="analyze()">Analyze</button>
 
-<div id="result" class="card" style="display:none">
+<div id="result" class="card" style="display:none;">
   <div class="score" id="score"></div>
   <p><b>Summary:</b> <span id="summary"></span></p>
   <p><b>Roadmap:</b></p>
@@ -26,7 +26,7 @@
 
 <script>
 async function analyze() {
-  const repoUrl = document.getElementById("repo").value;
+  const repoUrl = document.getElementById("repoUrl").value;
 
   const res = await fetch("/api/analyze", {
     method: "POST",
@@ -37,15 +37,15 @@ async function analyze() {
   const data = await res.json();
 
   document.getElementById("result").style.display = "block";
-  document.getElementById("score").innerText = "Score: " + data.score + "/100";
-  document.getElementById("summary").innerText = data.summary;
+  document.getElementById("score").textContent = `Score: ${data.score} / 100`;
+  document.getElementById("summary").textContent = data.summary;
 
-  const ul = document.getElementById("roadmap");
-  ul.innerHTML = "";
+  const roadmap = document.getElementById("roadmap");
+  roadmap.innerHTML = "";
   data.roadmap.forEach(r => {
     const li = document.createElement("li");
-    li.innerText = r;
-    ul.appendChild(li);
+    li.textContent = r;
+    roadmap.appendChild(li);
   });
 }
 </script>

@@ -1,49 +1,46 @@
-import Groq from "groq-sdk";
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
-  try {
-    const { repoUrl } = req.body;
+  const { repoUrl } = req.body;
 
-    if (!repoUrl) {
-      return res.status(400).json({ error: "repoUrl missing" });
-    }
+  const prompt = `
+Analyze this GitHub repository: ${repoUrl}
 
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    });
-
-    const completion = await groq.chat.completions.create({
-      model: "llama3-8b-8192",
-      messages: [
-        {
-          role: "user",
-          content: `
-Analyze this GitHub repository.
-
-Repo URL: ${repoUrl}
-
-Return ONLY valid JSON in this format:
+Return STRICT JSON ONLY:
 {
-  "score": number,
-  "summary": "short summary",
-  "roadmap": ["step1","step2","step3"]
+  "score": number (0-100),
+  "summary": string,
+  "roadmap": [string, string, string]
 }
-`
-        }
-      ],
+`;
+
+  const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "llama3-70b-8192",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3
+    })
+  });
+
+  const data = await groqRes.json();
+
+  const text = data.choices[0].message.content;
+
+  try {
+    const parsed = JSON.parse(text);
+    return res.status(200).json(parsed);
+  } catch {
+    return res.status(500).json({
+      score: 0,
+      summary: "Failed to analyze repository",
+      roadmap: []
     });
-
-    const raw = completion.choices[0].message.content;
-    const json = JSON.parse(raw);
-
-    return res.status(200).json(json);
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message });
   }
 }
