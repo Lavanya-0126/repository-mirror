@@ -1,5 +1,6 @@
 {
-  "type": "module",
+  "name": "repository-analyzer",
+  "version": "1.0.0",
   "dependencies": {
     "groq-sdk": "^0.7.0"
   }

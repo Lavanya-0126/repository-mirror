@@ -1,49 +1,53 @@
-import fetch from "node-fetch";
+import Groq from "groq-sdk";
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { repoUrl } = req.body;
-
-  if (!repoUrl) {
-    return res.status(400).json({ error: "Repo URL required" });
+    return res.status(405).json({ error: "Only POST allowed" });
   }
 
   try {
-    const prompt = `
-Analyze this GitHub repository: ${repoUrl}
+    const { repoUrl } = req.body;
 
-Give output ONLY in this JSON format:
+    if (!repoUrl) {
+      return res.status(400).json({ error: "repoUrl missing" });
+    }
+
+    const completion = await groq.chat.completions.create({
+      model: "llama3-8b-8192",
+      messages: [
+        {
+          role: "user",
+          content: `
+Analyze this GitHub repository.
+
+Return ONLY valid JSON in this format:
 {
-  "score": number (0-100),
+  "score": number,
   "summary": "short summary",
-  "roadmap": ["point 1", "point 2", "point 3"]
+  "roadmap": ["step1","step2","step3"]
 }
-`;
 
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3
-      })
+Repository URL:
+${repoUrl}
+          `,
+        },
+      ],
     });
 
-    const groqData = await groqRes.json();
+    const raw = completion.choices[0].message.content;
 
-    const content = groqData.choices[0].message.content;
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(raw);
 
     return res.status(200).json(parsed);
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: "Analysis failed",
+      details: err.message,
+    });
   }
 }
