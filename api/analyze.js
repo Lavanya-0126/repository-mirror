@@ -60,46 +60,85 @@ export default async function handler(req, res) {
     const contentsResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
     const contents = contentsResponse.ok ? await contentsResponse.json() : [];
 
+    // Check for important files
+    const fileNames = contents.map(c => c.name.toLowerCase());
+    const hasTests = fileNames.some(f => f.includes('test') || f === '.github');
+    const hasCI = fileNames.some(f => f === '.github' || f === '.travis.yml' || f === '.circleci');
+    const hasContributing = fileNames.some(f => f === 'contributing.md' || f === 'contributing');
+    const hasLicense = !!repoData.license;
+    const hasDescription = !!repoData.description && repoData.description.length > 20;
+
+    // Calculate last update days
+    const lastUpdate = new Date(repoData.updated_at);
+    const daysSinceUpdate = Math.floor((Date.now() - lastUpdate) / (1000 * 60 * 60 * 24));
+
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_API_KEY) {
       throw new Error("GROQ_API_KEY not set in environment variables");
     }
 
-    // Create analysis prompt
-    const prompt = `Analyze this GitHub repository and provide a quality assessment:
+    // Create STRICT analysis prompt
+    const prompt = `You are a STRICT GitHub repository quality analyzer. Be critical and realistic with scoring.
 
-Repository: ${repoData.name}
-Description: ${repoData.description || 'No description'}
-Stars: ${repoData.stargazers_count}
-Forks: ${repoData.forks_count}
-Open Issues: ${repoData.open_issues_count}
-License: ${repoData.license?.name || 'No license'}
-Languages: ${Object.keys(languages).join(', ') || 'Unknown'}
-Created: ${repoData.created_at}
-Last Updated: ${repoData.updated_at}
-Has README: ${hasReadme ? 'Yes' : 'No'}
-README Length: ${readmeContent.length} characters
+Repository Analysis:
+- Name: ${repoData.name}
+- Description: ${repoData.description || '❌ NO DESCRIPTION'}
+- Stars: ${repoData.stargazers_count}
+- Forks: ${repoData.forks_count}
+- Open Issues: ${repoData.open_issues_count}
+- Watchers: ${repoData.watchers_count}
+- License: ${repoData.license?.name || '❌ NO LICENSE'}
+- Languages: ${Object.keys(languages).join(', ') || 'Unknown'}
+- Created: ${repoData.created_at}
+- Last Updated: ${daysSinceUpdate} days ago
+- Has README: ${hasReadme ? '✅ Yes (' + readmeContent.length + ' chars)' : '❌ NO'}
+- Has Tests: ${hasTests ? '✅ Yes' : '❌ NO'}
+- Has CI/CD: ${hasCI ? '✅ Yes' : '❌ NO'}
+- Has Contributing Guide: ${hasContributing ? '✅ Yes' : '❌ NO'}
+- Has Good Description: ${hasDescription ? '✅ Yes' : '❌ NO'}
 
-Root Files/Folders: ${contents.map(c => c.name).slice(0, 15).join(', ')}
+Root Files: ${fileNames.slice(0, 20).join(', ')}
 
-Recent Commit Messages:
-${commits.slice(0, 5).map(c => `- ${c.commit.message}`).join('\n')}
+Recent Commits (last 5):
+${commits.slice(0, 5).map(c => `- "${c.commit.message}"`).join('\n')}
 
-Evaluate based on:
-- Documentation quality (README, code comments)
-- Project structure and organization  
-- Commit history and maintenance
-- Community engagement (stars, forks, issues)
-- Best practices and standards
+SCORING RULES (BE STRICT):
+- 90-100: World-class projects (React, Vue, Next.js level) - VERY RARE
+- 75-89: Professional, well-maintained projects with excellent docs
+- 60-74: Good projects with decent structure and some documentation
+- 40-59: Basic projects with minimal documentation or maintenance issues
+- 20-39: Poor structure, outdated, or minimal effort
+- 0-19: Abandoned or severely lacking
 
-Respond with ONLY valid JSON (no markdown, no code blocks):
+DEDUCT POINTS FOR:
+- No README or very short README (< 500 chars): -15 points
+- No license: -10 points
+- No description: -5 points
+- No tests visible: -10 points
+- No CI/CD: -5 points
+- Updated > 180 days ago: -15 points
+- Updated > 90 days ago: -8 points
+- Open issues > 100: -10 points
+- Poor commit messages (generic like "update", "fix"): -5 points
+- < 10 stars and < 5 forks: -10 points
+
+ADD POINTS FOR:
+- Excellent README (> 2000 chars): +10 points
+- Active maintenance (< 30 days): +10 points
+- Good commit messages: +5 points
+- Tests present: +10 points
+- CI/CD setup: +5 points
+- Contributing guide: +5 points
+- High community engagement (stars > 1000): +10 points
+
+Respond with ONLY valid JSON (no markdown):
 {
-  "score": <number 0-100>,
-  "summary": "<1-2 sentence technical evaluation>",
-  "roadmap": ["<specific improvement 1>", "<specific improvement 2>", "<specific improvement 3>"]
+  "score": <realistic number 0-100>,
+  "summary": "<critical 1-2 sentence evaluation mentioning specific weaknesses or strengths>",
+  "roadmap": ["<specific, actionable improvement>", "<another specific improvement>", "<third specific improvement>"]
 }`;
 
-    console.log("Calling Groq API...");
+    console.log("Calling Groq API with strict scoring...");
 
     const groqResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -110,18 +149,18 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", // ✅ UPDATED MODEL
+          model: "llama-3.3-70b-versatile",
           messages: [
             {
               role: "system",
-              content: "You are a GitHub repository analyzer. Always return ONLY valid JSON without markdown code blocks."
+              content: "You are a CRITICAL GitHub repository analyzer. Score strictly - most repos should get 40-70. Only exceptional projects deserve 80+. Return ONLY valid JSON."
             },
             {
               role: "user",
               content: prompt
             }
           ],
-          temperature: 0.3,
+          temperature: 0.2,
           max_tokens: 1000
         })
       }
@@ -130,7 +169,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();
       console.error("Groq API Error:", errorText);
-      throw new Error(`Groq API failed: ${groqResponse.status} - ${errorText}`);
+      throw new Error(`Groq API failed: ${groqResponse.status}`);
     }
 
     const data = await groqResponse.json();
@@ -142,7 +181,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 
     console.log("Raw AI response:", text);
 
-    // Clean up response - remove markdown code blocks
+    // Clean up response
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
     const parsed = JSON.parse(text);
@@ -152,7 +191,13 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
       throw new Error('Invalid response format');
     }
 
-    console.log("Analysis successful!");
+    // Extra validation: cap unrealistic scores
+    if (repoData.stargazers_count < 100 && parsed.score > 80) {
+      parsed.score = Math.min(parsed.score, 75);
+      console.log("Score capped due to low community engagement");
+    }
+
+    console.log("Analysis successful! Score:", parsed.score);
     return res.status(200).json(parsed);
 
   } catch (error) {
