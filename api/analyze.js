@@ -6,20 +6,17 @@ const groq = new Groq({
 
 export default async function handler(req, res) {
   try {
-    // 1️⃣ Allow only POST
     if (req.method !== "POST") {
       return res.status(405).send("Method Not Allowed");
     }
 
-    // 2️⃣ Read body
     const { repo } = req.body;
 
     if (!repo) {
       return res.status(400).send("Missing repo URL");
     }
 
-    // 3️⃣ Call Groq
-    const chatCompletion = await groq.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       model: "llama3-8b-8192",
       messages: [
         {
@@ -29,11 +26,19 @@ export default async function handler(req, res) {
       ],
     });
 
-    // 4️⃣ Send response
-    res.status(200).send(chatCompletion.choices[0].message.content);
+    // ✅ SAFE extraction
+    const output =
+      completion.choices?.[0]?.message?.content ||
+      completion.choices?.[0]?.delta?.content;
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Server Error: " + error.message);
+    if (!output) {
+      return res.status(500).send("No response from Groq");
+    }
+
+    res.status(200).send(output);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
   }
 }
